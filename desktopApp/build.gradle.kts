@@ -35,7 +35,8 @@ dependencies {
 /**
  * The core the app bundles, in resources/<windows|macos|linux> (Compose's
  * appResources layout, where CoreBinary looks for it): openflux-<os>-<arch>
- * [.exe], openflux-core.version and, on Windows, wintun.dll. The binaries are
+ * [.exe], openflux-core.version and, on Windows, wintun.dll (the full tunnel)
+ * and on x64 WinDivert.dll + WinDivert64.sys (the exit's L3). The binaries are
  * not in git. The release workflow builds them before packaging; for a local
  * run or package, prepareCore builds the missing ones for this machine with
  * the local Go, from -PcoreDir=<checkout>, the OpenFlux/ submodule, ../OpenFlux
@@ -58,14 +59,34 @@ abstract class PrepareCore @Inject constructor(private val exec: ExecOperations)
     @get:Internal val missing: Boolean
         get() {
             val out = outDir.get().asFile
-            return !File(out, coreName).isFile || (goos.get() == "windows" && !File(out, "wintun.dll").isFile)
+            return !File(out, coreName).isFile || windowsFiles.any { !File(out, it).isFile }
+        }
+
+    @get:Internal val windowsFiles: List<String>
+        get() = when {
+            goos.get() != "windows" -> emptyList()
+            goarch.get() == "amd64" -> listOf("wintun.dll", "WinDivert.dll", "WinDivert64.sys")
+            else -> listOf("wintun.dll")
         }
 
     @TaskAction
     fun prepare() {
         val out = outDir.get().asFile.apply { mkdirs() }
         if (!File(out, coreName).isFile) buildCore(out)
-        if (goos.get() == "windows" && !File(out, "wintun.dll").isFile) wintun(out)
+        if ("wintun.dll" in windowsFiles && !File(out, "wintun.dll").isFile) {
+            unzipChecked(
+                "https://www.wintun.net/builds/wintun-$WINTUN_VERSION.zip", WINTUN_SHA256, out,
+                mapOf("wintun/bin/${goarch.get()}/wintun.dll" to "wintun.dll"),
+            )
+        }
+        if ("WinDivert.dll" in windowsFiles && listOf("WinDivert.dll", "WinDivert64.sys").any { !File(out, it).isFile }) {
+            val dir = "WinDivert-$WINDIVERT_VERSION-A/x64"
+            unzipChecked(
+                "https://github.com/basil00/WinDivert/releases/download/v$WINDIVERT_VERSION/WinDivert-$WINDIVERT_VERSION-A.zip",
+                WINDIVERT_SHA256, out,
+                mapOf("$dir/WinDivert.dll" to "WinDivert.dll", "$dir/WinDivert64.sys" to "WinDivert64.sys"),
+            )
+        }
     }
 
     private fun buildCore(out: File) {
@@ -102,19 +123,17 @@ abstract class PrepareCore @Inject constructor(private val exec: ExecOperations)
         return dir
     }
 
-    /** Wintun for the full tunnel: the official build, checked against its SHA-256 like in the release workflow. */
-    private fun wintun(out: File) {
-        val zip = URI("https://www.wintun.net/builds/wintun-$WINTUN_VERSION.zip").toURL().readBytes()
+    /** Official builds (Wintun, WinDivert), checked against their SHA-256 like in the release workflow. */
+    private fun unzipChecked(url: String, sha256: String, out: File, entries: Map<String, String>) {
+        val name = url.substringAfterLast('/')
+        val zip = URI(url).toURL().readBytes()
         val sha = MessageDigest.getInstance("SHA-256").digest(zip).joinToString("") { "%02x".format(it) }
-        if (sha != WINTUN_SHA256) throw GradleException("wintun-$WINTUN_VERSION.zip: SHA-256 $sha, ожидался $WINTUN_SHA256")
-        val entry = "wintun/bin/${goarch.get()}/wintun.dll"
+        if (sha != sha256) throw GradleException("$name: SHA-256 $sha, ожидался $sha256")
+        val left = entries.toMutableMap()
         ZipInputStream(zip.inputStream()).use { input ->
-            while (true) {
-                val e = input.nextEntry ?: throw GradleException("В wintun-$WINTUN_VERSION.zip нет $entry")
-                if (e.name == entry) {
-                    File(out, "wintun.dll").writeBytes(input.readBytes())
-                    return
-                }
+            while (left.isNotEmpty()) {
+                val e = input.nextEntry ?: throw GradleException("В $name нет ${left.keys.joinToString()}")
+                left.remove(e.name)?.let { File(out, it).writeBytes(input.readBytes()) }
             }
         }
     }
@@ -133,6 +152,8 @@ abstract class PrepareCore @Inject constructor(private val exec: ExecOperations)
     private companion object {
         const val WINTUN_VERSION = "0.14.1"
         const val WINTUN_SHA256 = "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
+        const val WINDIVERT_VERSION = "2.2.2"
+        const val WINDIVERT_SHA256 = "63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15"
     }
 }
 

@@ -7,6 +7,7 @@ build/
 local.properties
 desktopApp/resources/*/openflux*
 desktopApp/resources/*/wintun.dll
+desktopApp/resources/*/WinDivert*
 !desktopApp/resources/**/.gitkeep
 
 # Chromium (the built-in browser) leaves these in the working directory.

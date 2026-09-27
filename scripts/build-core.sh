@@ -9,7 +9,8 @@
 # The target is GOOS/GOARCH (default: this machine). Writes into
 # desktopApp/resources/<windows|macos|linux>: openflux-<os>-<arch>[.exe],
 # openflux-core.version (branch@commit, shown under Settings → About) and,
-# for Windows, wintun.dll (the full tunnel).
+# for Windows, wintun.dll (the full tunnel) and WinDivert.dll + WinDivert64.sys
+# (the exit node's L3 forwarding).
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -67,6 +68,17 @@ if [ "$goos" = windows ]; then
   echo "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51  $wintun_zip" | sha256sum -c - >/dev/null
   unzip -p "$wintun_zip" wintun/bin/amd64/wintun.dll > "$out/wintun.dll"
   rm -f "$wintun_zip"
+
+  # WinDivert for the exit node's L3 forwarding (--mode=l3); x64 only.
+  if [ "$goarch" = amd64 ]; then
+    windivert_zip=$(mktemp)
+    curl -fsSL -o "$windivert_zip" https://github.com/basil00/WinDivert/releases/download/v2.2.2/WinDivert-2.2.2-A.zip
+    echo "63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15  $windivert_zip" | sha256sum -c - >/dev/null
+    for f in WinDivert.dll WinDivert64.sys; do
+      unzip -p "$windivert_zip" "WinDivert-2.2.2-A/x64/$f" > "$out/$f"
+    done
+    rm -f "$windivert_zip"
+  fi
 fi
 
 branch=$(git -C "$core" rev-parse --abbrev-ref HEAD)

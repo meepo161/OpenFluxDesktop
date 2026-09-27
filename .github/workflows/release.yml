@@ -27,6 +27,8 @@ concurrency:
 env:
   WINTUN_VERSION: '0.14.1'
   WINTUN_SHA256: '07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51'
+  WINDIVERT_VERSION: '2.2.2'
+  WINDIVERT_SHA256: '63cb41763bb4b20f600b6de04e991a9c2be73279e317d4d82f237b150c5f3f15'
 
 jobs:
   build:
@@ -124,6 +126,17 @@ jobs:
           7z e -y wintun.zip wintun/bin/amd64/wintun.dll -odesktopApp/resources/windows >/dev/null
           rm wintun.zip
 
+      # The exit node's L3 forwarding (--mode=l3) on Windows: WinDivert.dll
+      # loads WinDivert64.sys from its own folder, the core's.
+      - name: WinDivert
+        if: runner.os == 'Windows'
+        run: |
+          curl -fsSL -o windivert.zip "https://github.com/basil00/WinDivert/releases/download/v$WINDIVERT_VERSION/WinDivert-$WINDIVERT_VERSION-A.zip"
+          echo "$WINDIVERT_SHA256  windivert.zip" | sha256sum -c -
+          d="WinDivert-$WINDIVERT_VERSION-A/x64"
+          7z e -y windivert.zip "$d/WinDivert.dll" "$d/WinDivert64.sys" -odesktopApp/resources/windows >/dev/null
+          rm windivert.zip
+
       - name: Tests
         run: ./gradlew --no-daemon :shared:jvmTest
 
@@ -145,7 +158,9 @@ jobs:
             find "$app" -name "$f" | grep -q . || { echo "::error::$f missing from the package"; exit 1; }
           done
           if [ "${{ matrix.goos }}" = windows ]; then
-            find "$app" -name wintun.dll | grep -q . || { echo "::error::wintun.dll missing from the package"; exit 1; }
+            for f in wintun.dll WinDivert.dll WinDivert64.sys; do
+              find "$app" -name "$f" | grep -q . || { echo "::error::$f missing from the package"; exit 1; }
+            done
           fi
           echo "Package OK"
 
