@@ -3,6 +3,16 @@
 All notable changes to OpenFluxDesktop. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.1] - 2026-09-27
+
+### Fixed
+
+- Settings → Core → "Выбрать…" filtered the file dialog to `*.exe`
+  unconditionally, so on macOS/Linux (where the core binary has no
+  extension) it showed nothing and the picker was unusable; the path
+  field still took a manually typed/pasted path. Bumps `shared` to
+  [OpenFluxClientShared#2](https://github.com/p1neappleXpress/OpenFluxClientShared/pull/2).
+
 ## [2.0.0] - 2026-09-27
 
 First release of this app. Replaces the previous independent desktop
