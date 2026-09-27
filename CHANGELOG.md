@@ -19,6 +19,19 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 - Cups.online profiles with no room codes couldn't be saved or connected;
   the node generates its own rooms, so an empty value is valid for this
   transport only.
+- An exit node always listened for Direct (TCP on `0.0.0.0:<port>`) and put
+  it into the clients' link and QR, even when the profile had no Direct
+  transport: choosing two transports gave clients three. It now listens
+  only when the profile has Direct, at that transport's priority.
+  [OpenFluxClientShared#6](https://github.com/p1neappleXpress/OpenFluxClientShared/pull/6).
+- A cups.online exit started without room codes left cups.online out of its
+  link and QR, so clients had no rooms to join; the link now carries the
+  rooms the node created, and is printed again if they change. Bumps
+  `OpenFlux` to [OpenFlux#123](https://github.com/p1neappleXpress/OpenFlux/pull/123).
+- After switching profiles the "через …" badge could keep the previous
+  profile's carrier (for good if the new profile is classic) and an exit
+  its old QR: a stopped core's last status and output no longer overwrite
+  the new state.
 
 ### Added
 
@@ -31,6 +44,9 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 - Node-wizard deployment logging: every SSH/RPC call and the wizard's own
   step narration now goes to the Logs tab, so a stuck deployment is
   diagnosable without a debugger.
+- Home → Подключение: a "Сейчас через" row for profiles with several
+  transports, and carriers named as in the app ("Board 2", not `boards-2`)
+  there and in the "через …" badge.
 
 ## [2.0.1] - 2026-09-27
 
