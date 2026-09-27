@@ -1,0 +1,222 @@
+name: Release
+
+# A tag like v1.2.3 builds OpenFlux for Windows, Linux and macOS from the
+# OpenFlux/ and shared/ submodules pinned in that commit, and publishes the
+# packages as a GitHub release. "Run workflow" builds them as artifacts
+# without publishing, for a dry run.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish a release (tag the built commit as v<version>)'
+        type: boolean
+        default: false
+      version:
+        description: 'Version (1.2.3); required when publish is checked from a manual run'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  WINTUN_VERSION: '0.14.1'
+  WINTUN_SHA256: '07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51'
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-2022
+            goos: windows
+            goarch: amd64
+            resources: windows
+            skiko: windows-x64
+            platform: windows-x64
+            tasks: ':desktopApp:createDistributable :desktopApp:packageMsi :desktopApp:packageExe'
+          - name: Linux x64
+            runner: ubuntu-22.04
+            goos: linux
+            goarch: amd64
+            resources: linux
+            skiko: linux-x64
+            platform: linux-x64
+            tasks: ':desktopApp:createDistributable :desktopApp:packageDeb'
+          - name: macOS Apple Silicon
+            runner: macos-14
+            goos: darwin
+            goarch: arm64
+            resources: macos
+            skiko: macos-arm64
+            platform: macos-arm64
+            tasks: ':desktopApp:createDistributable :desktopApp:packageDmg'
+          - name: macOS Intel
+            runner: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            resources: macos
+            skiko: macos-x64
+            platform: macos-x64
+            tasks: ':desktopApp:createDistributable :desktopApp:packageDmg'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Version
+        id: version
+        run: |
+          v="${{ inputs.version }}"
+          if [ -z "$v" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF#refs/tags/v}"; fi
+          if [ -z "$v" ]; then v="0.0.0-dev"; fi
+          # jpackage wants MAJOR.MINOR.BUILD with numbers only, MAJOR > 0 on macOS.
+          if ! [[ "$v" =~ ^[1-9][0-9]*\.[0-9]+\.[0-9]+$ ]]; then echo "::error::version '$v' is not MAJOR.MINOR.BUILD"; exit 1; fi
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+          echo "Version $v, core $(git -C OpenFlux rev-parse --short HEAD)"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: OpenFlux/go.mod
+          cache-dependency-path: OpenFlux/go.sum
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q fakeroot
+
+      - name: Build the core
+        run: |
+          out="$GITHUB_WORKSPACE/desktopApp/resources/${{ matrix.resources }}"
+          ext=""; [ "${{ matrix.goos }}" = windows ] && ext=".exe"
+          name="openflux-${{ matrix.goos }}-${{ matrix.goarch }}$ext"
+          mkdir -p "$out"
+          cd OpenFlux
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$out/$name" .
+          chmod +x "$out/$name"
+          printf '%s@%s\n' "main" "$(git rev-parse --short HEAD)" > "$out/openflux-core.version"
+          echo "CORE_NAME=$name" >> "$GITHUB_ENV"
+          cat "$out/openflux-core.version"
+
+      - name: Wintun
+        if: runner.os == 'Windows'
+        run: |
+          curl -fsSL -o wintun.zip "https://www.wintun.net/builds/wintun-$WINTUN_VERSION.zip"
+          echo "$WINTUN_SHA256  wintun.zip" | sha256sum -c -
+          7z e -y wintun.zip wintun/bin/amd64/wintun.dll -odesktopApp/resources/windows >/dev/null
+          rm wintun.zip
+
+      - name: Tests
+        run: ./gradlew --no-daemon :shared:jvmTest
+
+      - name: Package
+        run: |
+          flags="-PappVersion=${{ steps.version.outputs.value }}"
+          [ "${{ matrix.goos }}" = windows ] && flags="$flags -PwindowsPackage=true"
+          ./gradlew --no-daemon $flags ${{ matrix.tasks }}
+
+      # Without Skia's natives for the platform (skiko) the app cannot draw
+      # a window, and nothing fails at build time: check the package.
+      - name: Check the package
+        run: |
+          app=$(find desktopApp/build/compose/binaries/main/app -mindepth 1 -maxdepth 1 | head -n1)
+          echo "App: $app"
+          find "$app" -iname "skiko-awt-runtime-${{ matrix.skiko }}*.jar" | grep -q . \
+            || { echo "::error::skiko ${{ matrix.skiko }} runtime missing from the package"; exit 1; }
+          for f in "$CORE_NAME" openflux-core.version; do
+            find "$app" -name "$f" | grep -q . || { echo "::error::$f missing from the package"; exit 1; }
+          done
+          if [ "${{ matrix.goos }}" = windows ]; then
+            find "$app" -name wintun.dll | grep -q . || { echo "::error::wintun.dll missing from the package"; exit 1; }
+          fi
+          echo "Package OK"
+
+      - name: Collect
+        run: |
+          v=${{ steps.version.outputs.value }}
+          p=${{ matrix.platform }}
+          bin=desktopApp/build/compose/binaries/main
+          mkdir -p dist
+          case "${{ matrix.goos }}" in
+            windows)
+              cp $bin/msi/*.msi "dist/OpenFlux-$v-$p.msi"
+              cp $bin/exe/*.exe "dist/OpenFlux-$v-$p-setup.exe"
+              (cd $bin/app && 7z a -tzip -mx=7 "$GITHUB_WORKSPACE/dist/OpenFlux-$v-$p-portable.zip" OpenFlux >/dev/null)
+              ;;
+            linux)
+              cp $bin/deb/*.deb "dist/OpenFlux-$v-$p.deb"
+              find $bin/app -name "$CORE_NAME" -exec chmod +x {} +
+              tar -C $bin/app -czf "dist/OpenFlux-$v-$p.tar.gz" OpenFlux
+              ;;
+            darwin)
+              cp $bin/dmg/*.dmg "dist/OpenFlux-$v-$p.dmg"
+              ;;
+          esac
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenFluxDesktop-${{ steps.version.outputs.value }}-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v') || (inputs.publish && inputs.version != '')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else echo "name=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          name: OpenFluxDesktop ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          files: dist/*
+          body: |
+            | Система | Файл |
+            |---|---|
+            | **Windows** 10/11 x64 | `.msi` или `-setup.exe` (установка), `-portable.zip` (без установки, запуск `OpenFlux.exe`) |
+            | **Linux** x64 | `.deb` (Debian, Ubuntu, Mint) или `.tar.gz` (запуск `OpenFlux/bin/OpenFlux`) |
+            | **macOS** | `-macos-arm64.dmg` (Apple Silicon) или `-macos-x64.dmg` (Intel) |
+
+            - Встроенный браузер для входа в Яндекс и проверок (~230 МБ) скачивается при первом использовании.
+            - Системный прокси и режим «Весь трафик компьютера» пока только в Windows; на Linux и macOS программы подключаются к SOCKS5 `127.0.0.1:1080` или HTTP `127.0.0.1:1081`.
+            - Сборки для macOS не подписаны: при первом запуске откройте приложение через правый клик → «Открыть».
+            - Контрольные суммы — в `SHA256SUMS.txt`.
