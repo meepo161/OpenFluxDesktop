@@ -19,12 +19,18 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 - Cups.online profiles with no room codes couldn't be saved or connected;
   the node generates its own rooms, so an empty value is valid for this
   transport only.
-- The node wizard's SSH/RPC calls and step narration are now logged to the
-  Logs tab, so a stuck deployment is diagnosable without a debugger.
 
 ### Added
 
-- Node-wizard deployment logging (desktop; mirrored on Android).
+- Settings → Ядро OpenFlux: a core log-level picker (Выкл / -d / -dd /
+  -ddd, the core's `--debug=N`) in place of the "Подробный журнал ядра"
+  switch, which could only turn -dd on. -dd is the level that shows
+  sessions, handshakes and the encryption (KDF) context; -ddd adds packet
+  hexdumps. Bumps `shared` to
+  [OpenFluxClientShared#5](https://github.com/p1neappleXpress/OpenFluxClientShared/pull/5).
+- Node-wizard deployment logging: every SSH/RPC call and the wizard's own
+  step narration now goes to the Logs tab, so a stuck deployment is
+  diagnosable without a debugger.
 
 ## [2.0.1] - 2026-09-27
 
