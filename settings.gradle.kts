@@ -1,4 +1,4 @@
-rootProject.name = "OpenFluxDesktop"
+rootProject.name = "openfluxdesktop"
 
 pluginManagement {
     repositories {
@@ -24,6 +24,10 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // JOGL for JCEF (KCEF, the built-in browser).
+        maven("https://jogamp.org/deployment/maven") {
+            mavenContent { includeGroupAndSubgroups("org.jogamp") }
+        }
     }
 }
 
@@ -31,5 +35,9 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":desktopApp")
+// shared/ is the OpenFluxClientShared git submodule (init with
+// `git submodule update --init --recursive`). It still targets Android too,
+// so building here needs an Android SDK even though this repo only packages
+// the desktop app.
 include(":shared")
+include(":desktopApp")
