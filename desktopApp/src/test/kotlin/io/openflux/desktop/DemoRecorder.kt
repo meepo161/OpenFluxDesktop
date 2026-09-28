@@ -33,6 +33,10 @@ import io.openflux.desktop.model.NodePlan
 import io.openflux.desktop.model.NodeTransport
 import io.openflux.desktop.model.NodeWizardException
 import io.openflux.desktop.model.Profile
+import io.openflux.desktop.data.FileAccountRepository
+import io.openflux.desktop.data.HttpSessionProbe
+import io.openflux.desktop.service.Accounts
+import io.openflux.desktop.web.KcefAccountBrowser
 import io.openflux.desktop.model.ProfileSource
 import io.openflux.desktop.model.ServerProbe
 import io.openflux.desktop.model.ShareConfig
@@ -276,7 +280,12 @@ class DemoRecorder {
         val platform = DemoPlatform(kind)
         // Links are the core's: the demo runs the bundled one.
         val codec = CoreShareLinkCodec(CliCoreLinks(settings, CoreBinary()))
-        val container = AppContainer(profiles, settings, connection, platform, codec, DemoNode(codec))
+        val accounts = Accounts(
+            FileAccountRepository(java.nio.file.Files.createTempDirectory("demo-accounts").toFile()),
+            KcefAccountBrowser(), HttpSessionProbe(), System::currentTimeMillis,
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
+        )
+        val container = AppContainer(profiles, settings, connection, platform, codec, DemoNode(codec), accounts)
         val link = kotlinx.coroutines.runBlocking { codec.encode(
             ShareConfig(
                 name = "Нода Франкфурт", negotiate = true, secret = "5f".repeat(32),
