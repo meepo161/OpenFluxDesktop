@@ -3,7 +3,23 @@
 All notable changes to OpenFluxDesktop. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.1.0] - 2026-09-28 (meepo161/OpenFluxDesktop)
+
+The first release of the meepo161 fork: the app, its update check, the core
+submodule and the node wizard's core come from the fork's repositories
+(meepo161/OpenFlux, meepo161/OpenFluxClientShared, meepo161/OpenFluxDesktop).
+
+### Added
+
+- «Своя нода»: step 1 asks whose core the server gets — the fork's
+  (`meepo161/OpenFlux`, default) or the original (`p1neappleXpress/OpenFlux`);
+  the node's auto-update then follows that repository.
+- Settings → Core: besides the bundled core and a file of your own, the
+  newest `v*` release of the fork's or the original core, downloaded for
+  this OS and checked against the release's `SHA256SUMS.txt`. The node
+  wizard always runs the bundled core.
+
+### From p1neappleXpress/OpenFluxDesktop (not yet released there)
 
 ### Added
 

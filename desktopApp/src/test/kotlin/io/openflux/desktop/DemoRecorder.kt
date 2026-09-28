@@ -26,6 +26,7 @@ import io.openflux.desktop.model.ExtraTransport
 import io.openflux.desktop.model.LogLevel
 import io.openflux.desktop.model.LogLine
 import io.openflux.desktop.model.NewChannel
+import io.openflux.desktop.model.NodeCoreSource
 import io.openflux.desktop.model.NodePlan
 import io.openflux.desktop.model.NodeTransport
 import io.openflux.desktop.model.NodeWizardException
@@ -380,7 +381,7 @@ class DemoRecorder {
     private class DemoNode : NodeWizardService {
         private val codec = JvmShareLinkCodec()
 
-        override suspend fun connect(target: SshTarget): ServerProbe {
+        override suspend fun connect(target: SshTarget, source: NodeCoreSource): ServerProbe {
             if (target.hostKey.isEmpty()) {
                 throw NodeWizardException("новый сервер", hostKey = "SHA256:q3Vx8Ld2pWm7aKc9Rt1YhZ0uNf5bGe4sJiOo6TzXvBw", trust = true)
             }

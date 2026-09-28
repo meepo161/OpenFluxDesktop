@@ -1,6 +1,8 @@
 # OpenFluxDesktop
 
-Desktop client for [OpenFlux](https://github.com/p1neappleXpress/OpenFlux)
+> **Fork meepo161.** Releases, the update check, the core submodule and the node wizard's core point at [meepo161/OpenFlux](https://github.com/meepo161/OpenFlux). Settings → Core can switch the app to the original [p1neappleXpress/OpenFlux](https://github.com/p1neappleXpress/OpenFlux) core, and the node wizard can install either on a server.
+
+Desktop client for [OpenFlux](https://github.com/meepo161/OpenFlux)
 (Windows/macOS/Linux): full-tunnel or SOCKS5/HTTP proxy, multi-transport
 sessions with automatic failover, AES-256-GCM encryption, a node-deployment
 wizard (deploy an exit over SSH from the app), and a built-in browser for
@@ -17,7 +19,7 @@ tag.
 ## Getting the code
 
 ```bash
-git clone --recurse-submodules https://github.com/p1neappleXpress/OpenFluxDesktop.git
+git clone --recurse-submodules https://github.com/meepo161/OpenFluxDesktop.git
 ```
 
 Already cloned without `--recurse-submodules`?
@@ -28,10 +30,10 @@ git submodule update --init --recursive
 
 This checks out two submodules:
 
-- `shared/` → [OpenFluxClientShared](https://github.com/p1neappleXpress/OpenFluxClientShared),
+- `shared/` → [OpenFluxClientShared](https://github.com/meepo161/OpenFluxClientShared),
   the Compose Multiplatform UI and models shared with
-  [OpenFluxAndroid](https://github.com/p1neappleXpress/OpenFluxAndroid).
-- `OpenFlux/` → [OpenFlux](https://github.com/p1neappleXpress/OpenFlux), the
+  [OpenFluxAndroid](https://github.com/meepo161/OpenFluxAndroid).
+- `OpenFlux/` → [OpenFlux](https://github.com/meepo161/OpenFlux), the
   core this app bundles as a separate process.
 
 ## Building
