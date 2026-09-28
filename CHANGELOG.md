@@ -3,7 +3,7 @@
 All notable changes to OpenFluxDesktop. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [2.1.0] - 2026-09-28 (meepo161/OpenFluxDesktop)
+## [2.6.0] - 2026-09-28 (meepo161/OpenFluxDesktop)
 
 The first release of the meepo161 fork: the app, its update check, the core
 submodule and the node wizard's core come from the fork's repositories
