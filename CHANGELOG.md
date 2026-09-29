@@ -7,6 +7,16 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 
 ### Added
 
+- «Своя нода»: a new channel is no longer Yandex-only. The transports step
+  takes any mix of a Yandex document (your own link), a Mail.ru public
+  document and cups.online rooms (created automatically), with direct
+  always on as the backup; the link and the saved profile carry all of
+  them.
+- «Автообновление ядра» on the plan step (on by default): the server's
+  `openflux-node-update.timer` checks the newest `node-v*` release every
+  6 hours, verifies it against the release's `node-install.sh` and
+  `SHA256SUMS`, restarts the channels and rolls back if one does not stay
+  up. Works on any systemd distribution.
 - macOS: «Весь трафик компьютера (TUN)», the core's utun client (as the
   Wintun full tunnel on Windows). The core needs root: on each connect
   macOS asks for an administrator's password; OpenFlux itself runs as a
@@ -19,10 +29,17 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 
 ### Changed
 
+- The node wizard no longer signs in to Yandex: the document step takes
+  the link of a document you created, and the node gets no account
+  cookies. Solving a captcha on the client, or for a node through the
+  client, works as before.
 - The core also brings, from its main branch:
   - the node wizard installs nodes with the new `node-install.sh` (still
-    `node-v1.1.0`); it can keep a node updated by itself, off unless
-    turned on on the server (`node-install.sh autoupdate on`);
+    `node-v1.1.0`), tested on Ubuntu 20.04–24.04, Debian 12–13, Rocky 9,
+    Alma 8, Fedora 42, Arch and openSUSE Leap 15.6. On the server,
+    `sudo sh /opt/openflux-node/node-install.sh list` shows the channels,
+    `remove <channel>` deletes one and `uninstall` removes the node
+    completely (channels, core, updater, user);
   - a Windows exit in `l3` mode works (WinDivert), for nodes run by hand;
   - the Go module is `github.com/p1neappleXpress/OpenFlux`.
 
@@ -35,6 +52,11 @@ All notable changes to OpenFluxDesktop. Format loosely follows
   `shared` to [`a8bd71e`](https://github.com/p1neappleXpress/OpenFluxClientShared/commit/a8bd71e).
 - A classic profile in the full tunnel shows as connected once the tunnel
   is up.
+
+### Removed
+
+- The node wizard no longer hands the node a Yandex sign-in (it had no way
+  in from the UI since the document step takes your own link).
 
 ## [2.1.0] - 2026-09-28
 
