@@ -344,7 +344,7 @@ class DemoRecorder {
         private var ticks = 0
         private var lines = 0L
 
-        override fun connect(profile: Profile) {
+        override fun connect(profile: Profile, mode: ConnectionMode?) {
             val since = System.currentTimeMillis()
             state.value = ConnectionState.Connecting(profile, ConnectionMode.Client, since)
             exitAddress.value = ExitAddress.Checking
