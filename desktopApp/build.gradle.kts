@@ -39,7 +39,7 @@ dependencies {
  * not in git. The release workflow builds them before packaging; for a local
  * run or package, prepareCore builds the missing ones for this machine with
  * the local Go, from -PcoreDir=<checkout>, the OpenFlux/ submodule, ../OpenFlux
- * next to this repository, or else a clone of p1neappleXpress/OpenFlux in
+ * next to this repository, or else a clone of meepo161/OpenFlux in
  * build/openflux-core. -PskipCore=true runs the app without a core
  * (Settings → Core then takes a file of your own).
  */
@@ -155,7 +155,7 @@ val prepareCore by tasks.registering(PrepareCore::class) {
             rootDir.resolve("../OpenFlux"),
         ),
     )
-    repository.set(providers.gradleProperty("coreRepo").orElse("p1neappleXpress/OpenFlux"))
+    repository.set(providers.gradleProperty("coreRepo").orElse("meepo161/OpenFlux"))
     ref.set(providers.gradleProperty("coreRef").orElse("main"))
     val skip = findProperty("skipCore") == "true"
     onlyIf { !skip && missing }

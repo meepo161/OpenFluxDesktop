@@ -5,58 +5,205 @@ All notable changes to OpenFluxDesktop. Format loosely follows
 
 ## [Unreleased]
 
+### Changed
+
+- Integrated current upstream/main with fork and bonding; retained document creation and Yandex sign-in from the fork.
+- The node installer supports older systemd distributions and the list, remove-by-name and uninstall commands.
+- Included upstream fixes for classic-profile traffic counters and connection state.
+- Included upstream full-tunnel support on macOS and per-connection core elevation on Windows.
+
+## [2.10.0] - 2026-09-30 (meepo161/OpenFluxDesktop)
+
 ### Added
 
-- «Своя нода»: a new channel is no longer Yandex-only. The transports step
-  takes any mix of a Yandex document (your own link), a Mail.ru public
-  document and cups.online rooms (created automatically), with direct
-  always on as the backup; the link and the saved profile carry all of
-  them.
+- Бондинг: переключатель в профиле Session. Все транспорты работают
+  одновременно: скорости складываются, а если сеть или документ пропадёт,
+  остальные продолжают. Соединения распределяются по транспортам, UDP (SRT)
+  делится по пакетам. Нужна нода node-v1.3.0 или новее; со старыми нодами
+  профиль работает как раньше. Три документа Mail.ru, три соединения:
+  0,84 МБ/с против 0,59 на одном.
+- Сеть для каждого транспорта: любая, Ethernet, Wi-Fi, мобильная (модем). Ядро привязывает транспорт к первому подключённому адаптеру этого типа.
+- Главная показывает транспорты бондинга с их сетями.
+- Bumps `OpenFlux` to 563ee0c (node-v1.3.0), `shared` to 204a159.
+
+## [2.9.4] - 2026-09-30 (meepo161/OpenFluxDesktop)
+
+### Fixed
+
+- A node's profile (made by «Своя нода») started in exit mode ran a second
+  exit on the node's own document: both exits took and answered the
+  clients' packets and an iOS client got nowhere. The app now refuses to
+  run it as an exit and says to switch to «Клиент» or make a separate
+  profile with its own document.
+- The wizard's check connects to the new node as a client whatever mode
+  the app is in; it no longer asks to switch the mode first.
+- Bumps `shared` to 9c5fc2f.
+
+## [2.9.3] - 2026-09-30 (meepo161/OpenFluxDesktop)
+
+### Fixed
+
+- Mail.ru carrier: with both ends on the document, the connection to it
+  dropped every half minute (the editor server locked the document on one
+  end and dropped it when it did not unlock it), and each rejoin stalled
+  traffic for up to 30 seconds; long uploads, such as a stream, broke. The
+  carrier now unlocks the document for the other end. The wizard installs
+  node core node-v1.2.3.
+- Bumps `OpenFlux` to 14dc27d.
+
+## [2.9.2] - 2026-09-30 (meepo161/OpenFluxDesktop)
+
+### Fixed
+
+- A node the wizard sets up now also serves clients that speak only the
+  classic protocol, such as the iOS app: they were dropped on every carrier
+  of the node and never got through. The wizard installs node core
+  node-v1.2.2; nodes with the core updater on get it by themselves.
+- The core no longer drops packets when a carrier's batch queue is full
+  (node-v1.2.1 backpressure): it waits and retries in order.
+- Bumps `OpenFlux` to d420317.
+
+## [2.9.1] - 2026-09-29 (meepo161/OpenFluxDesktop)
+
+### Fixed
+
+- «Своя нода», step 4 (verification) on an Android phone in VPN mode: the app
+  is kept out of its own VPN, so it could never ask where the traffic
+  leaves; the step retried until its 150 s timeout and failed. It now counts
+  the new node's Session answer (right key and document) as the proof, and
+  Home says the exit address is seen in a browser (api.ipify.org).
+- «Проверить ещё раз» after a failed verification ended at once with the old
+  error: it read the previous attempt's state before the new connection
+  started. It now waits for the new connection.
+- A Yandex board is joined as a guest: the Yandex sign-in is no longer put
+  into its carrier or offered to its node.
+- Bumps `shared` to 48f1255.
+
+## [2.9.0] - 2026-09-29 (meepo161/OpenFluxDesktop)
+
+### Added
+
+- «Своя нода» makes every document right in the wizard, no developer mode:
+  the Yandex document (Volga), a Mail.ru document (in Cloud, published and
+  open to editing by link) and a Yandex board (open to guests as editors).
+  The sign-in opens in the Accounts window; a saved one skips it. A pasted
+  link still works for each.
+- The wizard offers two more carriers: Yandex Docs (the same Yandex document
+  through the older transport) and Yandex Board. The node takes them too:
+  `node-install.sh` writes `yandex` and `boards` transports, pinned at
+  [`6d277eb`](https://github.com/meepo161/OpenFlux/commit/6d277ebd05ef69348b8f12ba8915c90fdcfbb19f).
+- The profile editor makes a board for a Yandex Board carrier.
+- Bumps `OpenFlux` to `7006309` and `shared` to `de4a638`.
+
+## [2.8.0] - 2026-09-29 (meepo161/OpenFluxDesktop)
+
+The fork on p1neappleXpress 2.1.0: links read and made by the core, a
+classic profile as the exit node, one protocol for every client.
+
+### Added
+
+- Developer mode: ten taps on the app version in Settings → About show the
+  «Аккаунты» tab (a switch there hides it again). In developer mode the node
+  wizard also offers to sign in to Yandex and make the document, in the
+  Accounts tab's sign-in window; otherwise it takes your own link.
+
+### Fixed
+
+- Sign-in pages in the built-in browser (Accounts, the node wizard) stayed
+  blank: the sign-in address was loaded over by the new page's own first
+  load. Mail.ru (VK ID) and MAX pages get Chromium's own user agent.
+- The node wizard's sign-in menus («другой способ получить код») no longer
+  close: the page opens in the fixed-size sign-in window.
+
+### Changed
+
+- Bumps `OpenFlux` to the fork's [`57c69d7`](https://github.com/meepo161/OpenFlux/commit/57c69d706a71cd77f1951efeb8b438d275e1df86)
+  (`v0.3.0`, node core `node-v1.2.0`) and `shared` to
+  [`806f0b4`](https://github.com/meepo161/OpenFluxClientShared/commit/806f0b48de9dee598e91810f11a756f56ca578e9).
+
+## [2.7.0] - 2026-09-28 (meepo161/OpenFluxDesktop)
+
+### Added
+
+- «Аккаунты»: sign in once to Yandex or Mail.ru in the built-in browser; the
+  app keeps only the session (owner-only `accounts.json`, never in backups,
+  logs, QR codes or links) and shows each service's status — signed in (with
+  the login and when it was last checked), expired, or asking for a check.
+  Sessions are rechecked every 30 minutes without the browser; «Войти заново»
+  is one button, on the card and in a banner on Home when a profile needs it.
+- «Создать документ» makes the channel's document with the saved account, no
+  `cookies.txt` export: Yandex — a document on Disk with editing by link;
+  Mail.ru — a document in Cloud (`/openflux`), published and switched to
+  editing by link, then checked the way the core opens it (anonymous
+  `r7/edit`). The same button sits under a document field in the profile
+  editor; the node wizard uses the saved Yandex account too.
+- The Yandex sign-in goes into the core's cookie store before it connects, and
+  to your own node (from the wizard) over the tunnel, again after a fresh
+  sign-in. Someone else's node gets it only by hand, after a warning. The
+  Mail.ru account is never put into the core: its transport opens the
+  document anonymously and Cloud refuses that request with the account's
+  cookies.
+- Cups.online: «Сгенерировать комнаты» in the profile editor opens four rooms
+  without a node; the node given the same string joins them.
+
+### Fixed
+
+- Creating a Yandex document failed with «Failed to fetch»: Disk now
+  redirects `/editnew` to `docs.yandex.ru`, where the browser refused a
+  readable (CORS) request. Affected the node wizard as well.
+
+## [2.6.0] - 2026-09-28 (meepo161/OpenFluxDesktop)
+
+The first release of the meepo161 fork: the app, its update check, the core
+submodule and the node wizard's core come from the fork's repositories
+(meepo161/OpenFlux, meepo161/OpenFluxClientShared, meepo161/OpenFluxDesktop).
+
+### Added
+
+- «Своя нода»: step 1 asks whose core the server gets — the fork's
+  (`meepo161/OpenFlux`, default) or the original (`p1neappleXpress/OpenFlux`);
+  the node's auto-update then follows that repository.
+- Settings → Core: besides the bundled core and a file of your own, the
+  newest `v*` release of the fork's or the original core, downloaded for
+  this OS and checked against the release's `SHA256SUMS.txt`. The node
+  wizard always runs the bundled core.
+
+### From p1neappleXpress/OpenFluxDesktop (not yet released there)
+
+### Added
+
+- Developer mode (ten taps on the app version in Settings → About) shows
+  the «Аккаунты» tab: sign in once to Yandex or Mail.ru in the built-in browser; the
+  app keeps only the session (owner-only `accounts.json`, never in backups,
+  logs, QR codes or links) and shows each service's status — signed in,
+  expired, or asking for a check. Sessions are rechecked every 30 minutes;
+  «Войти заново» is one button.
+- «Создать документ» makes the channel's document with the saved account:
+  Yandex — a document on Disk with editing by link; Mail.ru — a document in
+  Cloud (`/openflux`), published and switched to editing by link. In
+  developer mode the node wizard offers it too, in the same sign-in window.
+- The Yandex sign-in goes into the core's cookie store before it connects,
+  and to your own node (from the wizard) over the tunnel. The Mail.ru account
+  is never put into the core: its transport opens the document anonymously.
+- Cups.online: «Сгенерировать комнаты» in the profile editor opens four
+  rooms without a node.
+
+### Fixed
+
+- The built-in browser's sign-in pages stayed blank: the sign-in address was
+  loaded over by the new page's own first load. Mail.ru (VK ID) and MAX get
+  Chromium's own user agent, as on Android.
+- «Своя нода»: a new channel is no longer Yandex-only. Step 2 picks any mix
+  of a Yandex document (your own link), a Mail.ru public document and
+  cups.online rooms (created automatically), with direct always on as the
+  backup; the link and the saved profile carry all of them.
 - «Автообновление ядра» on the plan step (on by default): the server's
   `openflux-node-update.timer` checks the newest `node-v*` release every
   6 hours, verifies it against the release's `node-install.sh` and
   `SHA256SUMS`, restarts the channels and rolls back if one does not stay
-  up. Works on any systemd distribution.
-- macOS: «Весь трафик компьютера (TUN)», the core's utun client (as the
-  Wintun full tunnel on Windows). The core needs root: on each connect
-  macOS asks for an administrator's password; OpenFlux itself runs as a
-  normal app. Disconnecting, quitting or a crash of OpenFlux stops the
-  root core, which puts the routes back.
-- Windows: the full tunnel no longer needs OpenFlux restarted as
-  administrator. On each connect Windows asks for permission (UAC) for the
-  core alone; disconnecting, quitting or a crash of OpenFlux ends it, and
-  the Wintun adapter goes with its routes.
-
-### Changed
-
-- The node wizard no longer signs in to Yandex: the document step takes
-  the link of a document you created, and the node gets no account
-  cookies. Solving a captcha on the client, or for a node through the
-  client, works as before.
-- The core also brings, from its main branch:
-  - the node wizard installs nodes with the new `node-install.sh` (still
-    `node-v1.1.0`), tested on Ubuntu 20.04–24.04, Debian 12–13, Rocky 9,
-    Alma 8, Fedora 42, Arch and openSUSE Leap 15.6. On the server,
-    `sudo sh /opt/openflux-node/node-install.sh list` shows the channels,
-    `remove <channel>` deletes one and `uninstall` removes the node
-    completely (channels, core, updater, user);
-  - a Windows exit in `l3` mode works (WinDivert), for nodes run by hand;
-  - the Go module is `github.com/p1neappleXpress/OpenFlux`.
-
-### Fixed
-
-- The speed and traffic counters work for classic profiles too, not only
-  Session ones: bumps `OpenFlux` to
-  [`96a0f95`](https://github.com/p1neappleXpress/OpenFlux/commit/96a0f95) (the core reports
-  traffic over IPC without a Session, and MAX counts its bytes) and
-  `shared` to [`a8bd71e`](https://github.com/p1neappleXpress/OpenFluxClientShared/commit/a8bd71e).
-- A classic profile in the full tunnel shows as connected once the tunnel
-  is up.
-
-### Removed
-
-- The node wizard no longer hands the node a Yandex sign-in (it had no way
-  in from the UI since the document step takes your own link).
+  up.
+- Bumps `OpenFlux` to [`ee7cf56`](https://github.com/p1neappleXpress/OpenFlux/commit/ee7cf56d27549018d5fc3f6a5a31445fff55380c)
+  and `shared` to [`b23354a`](https://github.com/p1neappleXpress/OpenFluxClientShared/commit/b23354ab2ecf8968eca8a3d1b7b66f6f74be07aa).
 
 ## [2.1.0] - 2026-09-28
 

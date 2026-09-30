@@ -29,10 +29,15 @@ import io.openflux.desktop.model.ExtraTransport
 import io.openflux.desktop.model.LogLevel
 import io.openflux.desktop.model.LogLine
 import io.openflux.desktop.model.NewChannel
+import io.openflux.desktop.model.NodeCoreSource
 import io.openflux.desktop.model.NodePlan
 import io.openflux.desktop.model.NodeTransport
 import io.openflux.desktop.model.NodeWizardException
 import io.openflux.desktop.model.Profile
+import io.openflux.desktop.data.FileAccountRepository
+import io.openflux.desktop.data.HttpSessionProbe
+import io.openflux.desktop.service.Accounts
+import io.openflux.desktop.web.KcefAccountBrowser
 import io.openflux.desktop.model.ProfileSource
 import io.openflux.desktop.model.ServerProbe
 import io.openflux.desktop.model.ShareConfig
@@ -41,6 +46,7 @@ import io.openflux.desktop.model.SshTarget
 import io.openflux.desktop.model.ThemeMode
 import io.openflux.desktop.model.TrafficStats
 import io.openflux.desktop.model.TransportType
+import io.openflux.desktop.model.YandexDocument
 import io.openflux.desktop.platform.JvmPlatformServices
 import io.openflux.desktop.service.AppContainer
 import io.openflux.desktop.service.ConnectionService
@@ -275,7 +281,12 @@ class DemoRecorder {
         val platform = DemoPlatform(kind)
         // Links are the core's: the demo runs the bundled one.
         val codec = CoreShareLinkCodec(CliCoreLinks(settings, CoreBinary()))
-        val container = AppContainer(profiles, settings, connection, platform, codec, DemoNode(codec))
+        val accounts = Accounts(
+            FileAccountRepository(java.nio.file.Files.createTempDirectory("demo-accounts").toFile()),
+            KcefAccountBrowser(), HttpSessionProbe(), System::currentTimeMillis,
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
+        )
+        val container = AppContainer(profiles, settings, connection, platform, codec, DemoNode(codec), accounts)
         val link = kotlinx.coroutines.runBlocking { codec.encode(
             ShareConfig(
                 name = "Нода Франкфурт", negotiate = true, secret = "5f".repeat(32),
@@ -333,7 +344,7 @@ class DemoRecorder {
         private var ticks = 0
         private var lines = 0L
 
-        override fun connect(profile: Profile) {
+        override fun connect(profile: Profile, mode: ConnectionMode?) {
             val since = System.currentTimeMillis()
             state.value = ConnectionState.Connecting(profile, ConnectionMode.Client, since)
             exitAddress.value = ExitAddress.Checking
@@ -387,7 +398,7 @@ class DemoRecorder {
         override fun clearLogs() { logs.value = emptyList() }
         override fun note(text: String, level: LogLevel) = Unit
 
-        override suspend fun connect(target: SshTarget): ServerProbe {
+        override suspend fun connect(target: SshTarget, source: NodeCoreSource): ServerProbe {
             if (target.hostKey.isEmpty()) {
                 throw NodeWizardException("новый сервер", hostKey = "SHA256:q3Vx8Ld2pWm7aKc9Rt1YhZ0uNf5bGe4sJiOo6TzXvBw", trust = true)
             }
@@ -397,12 +408,12 @@ class DemoRecorder {
 
         override suspend fun newChannel() = NewChannel("of-k3f9q2", "c3".repeat(32))
 
-        override suspend fun plan(channel: String, transports: List<NodeTransport>, autoUpdate: Boolean): NodePlan {
+        override suspend fun plan(channel: String, transports: List<NodeTransport>, withCookies: Boolean, autoUpdate: Boolean): NodePlan {
             Thread.sleep(600)
             return NodePlan(
                 channel = channel, port = 31337,
                 actions = listOf(
-                    "Скачать ядро OpenFlux node-v1.1.0 и сверить SHA-256",
+                    "Скачать ядро OpenFlux node-v1.3.0 и сверить SHA-256",
                     "Создать канал $channel: документ, ключ, порт 31337",
                     "Запустить systemd-сервис openflux-node@$channel",
                     "Открыть порт 31337/tcp для резервного канала",
@@ -410,14 +421,21 @@ class DemoRecorder {
             )
         }
 
-        override suspend fun apply(channel: NewChannel, transports: List<NodeTransport>, port: Int, autoUpdate: Boolean, sudoPassword: String) {
+        override suspend fun apply(
+            channel: NewChannel,
+            transports: List<NodeTransport>,
+            port: Int,
+            autoUpdate: Boolean,
+            sudoPassword: String,
+            cookieHeader: String,
+        ) {
             Thread.sleep(1500)
         }
 
+        override suspend fun createCupsRooms() = "WyJyb29tLTEiXQ"
+
         override suspend fun remove(channel: String, sudoPassword: String) = Unit
         override suspend fun checkDocument(documentUrl: String) { Thread.sleep(400) }
-
-        override suspend fun createCupsRooms() = "WyJyb29tLTEiXQ"
 
         override suspend fun shareLink(name: String, key: String, host: String, port: Int, transports: List<NodeTransport>) =
             codec.encode(
@@ -430,6 +448,15 @@ class DemoRecorder {
             )
 
         override suspend fun resolve(host: String) = setOf(host)
+        override val documentPage: StateFlow<BrowserPage?> = MutableStateFlow(null)
+
+        override suspend fun createDocument(fileName: String, onStep: (String) -> Unit): YandexDocument {
+            onStep("Создаю документ на Яндекс Диске…")
+            Thread.sleep(900)
+            return YandexDocument("https://docs.yandex.ru/edit/d/demoNewNodeDocument01234567890", "Session_id=demo; yandexuid=1")
+        }
+
+        override fun cancelDocument() = Unit
         override fun close() = Unit
     }
 
